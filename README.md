@@ -1,4 +1,4 @@
-# README for Discord Vulnerability Proof of Concept
+# Discord token grabber
 
 ## Introduction
 
