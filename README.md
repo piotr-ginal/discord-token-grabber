@@ -22,7 +22,7 @@ If you suspect your account has been compromised by a similar exploit:
 ## Limitations of the Program
 
 - **User Execution Required**: The program must be run on the victim's machine, emphasizing the importance of caution when executing unknown programs or scripts.
-- **Token Accumulation Issue**: In cases where multiple Discord accounts are used, or passwords are frequently changed, the large number of tokens generated may exceed message character limits, preventing their transmission.
+- **Token Accumulation Issue**: In cases where multiple Discord accounts are used, or passwords are frequently changed, the large number of tokens discovered may exceed message character limits, preventing their transmission.
 - **Browser Support**: Currently, this proof of concept only targets Google Chrome. However, the vulnerability is not limited to a single browser and can potentially be demonstrated across different platforms, including the Discord client itself.
 
 ## Conclusion
