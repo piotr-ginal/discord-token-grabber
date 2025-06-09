@@ -1,0 +1,12 @@
+lint.select = ["ALL", "E302"]
+line-length=120
+lint.ignore = [
+    "D100",
+    "D103",
+    "CPY001",
+
+    "D213",  # ignore rules causing conflicts
+    "D211",
+]
+preview = true
+target-version = "py311"
